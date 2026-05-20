@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>老黄的酒馆</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#d4a574">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="老黄的酒馆">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=ZCOOL+XiaoWei&display=swap">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'ZCOOL XiaoWei','Georgia','Noto Serif SC','Source Han Serif SC',serif; background:#0d0d0d; color:#d4c5a0; touch-action:pan-y; line-height:1.7; letter-spacing:0.02em; }
+::selection { background:#c9a84c; color:#0d0d0d; }
+.header { background:rgba(13,13,13,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); color:#d4c5a0; padding:18px 40px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(201,168,76,0.15); position:sticky; top:0; z-index:1000; }
+.header h1 { font-family:"Caveat",cursive; font-size:26px; font-weight:400; letter-spacing:0.08em; color:#c9a84c; }
+.nav-tabs { display:flex; gap:6px; }
+.nav-tab { padding:7px 18px; border-radius:0; cursor:pointer; font-size:13px; font-weight:400; letter-spacing:0.08em; transition:all 0.4s cubic-bezier(0.25,0.46,0.45,0.94); border:none; color:rgba(212,197,160,0.5); background:transparent; position:relative; }
+.nav-tab::after { content:''; position:absolute; bottom:0; left:50%; width:0; height:1px; background:#c9a84c; transition:all 0.4s cubic-bezier(0.25,0.46,0.45,0.94); transform:translateX(-50%); }
+.nav-tab:hover { color:rgba(212,197,160,0.85); }
+.nav-tab.active { color:#c9a84c; }
+.nav-tab.active::after { width:60%; }
+.search-bar { background:rgba(26,26,26,0.95); padding:24px 40px; border-bottom:1px solid rgba(201,168,76,0.08); }
+.search-input { width:100%; padding:14px 24px; border:1px solid rgba(201,168,76,0.2); border-radius:0; font-size:15px; outline:none; transition:border-color 0.4s; background:rgba(13,13,13,0.8); color:#d4c5a0; font-family:'Georgia',serif; letter-spacing:0.03em; }
+.search-input::placeholder { color:rgba(212,197,160,0.3); }
+.search-input:focus { border-color:#c9a84c; }
+.filters { display:flex; gap:20px; margin-top:18px; flex-wrap:wrap; }
+.filter-group { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.filter-label { font-size:11px; color:rgba(212,197,160,0.4); font-weight:400; letter-spacing:0.1em; text-transform:uppercase; }
+.filter-btn { padding:5px 14px; border:1px solid rgba(212,197,160,0.15); border-radius:0; cursor:pointer; font-size:12px; background:transparent; color:rgba(212,197,160,0.55); transition:all 0.4s; letter-spacing:0.04em; font-family:'Georgia',serif; }
+.filter-btn:hover { border-color:rgba(201,168,76,0.4); color:rgba(212,197,160,0.85); }
+.filter-btn.active { background:transparent; color:#c9a84c; border-color:#c9a84c; }
+.content { padding:40px; max-width:1400px; margin:0 auto; }
+.view { display:none; }
+.view.active { display:block; }
+#map { height:65vh; border:1px solid rgba(201,168,76,0.12); border-radius:0; }
+.whisky-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:28px; }
+.whisky-card { background:rgba(26,26,26,0.95); border:1px solid rgba(201,168,76,0.08); border-radius:0; overflow:hidden; transition:all 0.5s cubic-bezier(0.25,0.46,0.45,0.94); cursor:pointer; position:relative; }
+.whisky-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#c9a84c,transparent); opacity:0; transition:opacity 0.5s; }
+.whisky-card:hover { transform:translateY(-6px); border-color:rgba(201,168,76,0.25); }
+.whisky-card:hover::before { opacity:1; }
+.whisky-card-header { padding:22px 24px 18px; background:linear-gradient(135deg,rgba(26,26,46,0.9),rgba(22,33,62,0.9)); color:white; }
+.whisky-card-name { font-size:20px; font-weight:400; margin-bottom:5px; letter-spacing:0.06em; }
+        .whisky-card-name-en { font-family:"Caveat",cursive; font-size:15px; opacity:0.65; font-style:normal; letter-spacing:0.02em; font-weight:400; }
+        .detail-name-en { font-family:"Caveat",cursive; font-size:18px; opacity:0.65; font-style:normal; letter-spacing:0.02em; font-weight:400; margin-bottom:20px; }
+.whisky-card-body { padding:18px 24px 22px; }
+.whisky-card-meta { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.meta-tag { padding:3px 10px; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.12); border-radius:0; font-size:10px; color:rgba(212,197,160,0.65); letter-spacing:0.03em; }
+.whisky-card-flavor { font-size:13px; color:rgba(212,197,160,0.55); line-height:1.6; margin-bottom:16px; }
+.whisky-card-price { font-size:18px; color:#c9a84c; font-weight:400; letter-spacing:0.04em; }
+.whisky-card-actions { display:flex; gap:10px; margin-top:18px; }
+.action-btn { padding:6px 14px; border-radius:0; cursor:pointer; font-size:11px; border:1px solid; transition:all 0.4s; background:transparent; letter-spacing:0.04em; }
+.fav-btn { border-color:rgba(231,76,60,0.3); color:rgba(231,76,60,0.7); }
+.fav-btn:hover,.fav-btn.active { background:rgba(231,76,60,0.12); border-color:rgba(231,76,60,0.6); color:#e74c3c; }
+.note-btn { border-color:rgba(52,152,219,0.3); color:rgba(52,152,219,0.7); }
+.note-btn:hover { background:rgba(52,152,219,0.08); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div style="display:flex;flex-direction:column;">
+            <h1 style="display:flex;align-items:baseline;padding:0;margin:0;">
+                <span style="margin-right:8px;">🥃</span>
+                <span>老黄的酒馆</span>
+            </h1>
+            <div style="font-family:'Caveat',cursive;font-size:16px;opacity:0.5;letter-spacing:0.1em;color:#d4c5a0;margin-top:-5px;margin-left:28px;">Laohuang's Tavern</div>
+        </div>
+    <div class="nav-tabs">
+        <div class="nav-tab active" onclick="switchView('map')">🗺️ 地图</div>
+        <div class="nav-tab" onclick="switchView('list')">📋 列表</div>
+        <div class="nav-tab" onclick="switchView('favorites')">❤️ 收藏</div>
+    </div>
+</div>
+
+<div class="search-bar" id="searchBar">
+    <input type="text" class="search-input" placeholder="搜索威士忌名称、风味、产区..." oninput="searchWhisky()">
+    <div class="filters">
+        <div class="filter-group">
+            <span class="filter-label">产区</span>
+            <button class="filter-btn active" onclick="filterByRegion(event, '全部')">全部</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '斯佩塞')">斯佩塞</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '高地')">高地</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '艾雷岛')">艾雷岛</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '低地')">低地</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '坎贝尔镇')">坎贝尔镇</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '岛屿')">岛屿</button>
+            <button class="filter-btn" onclick="filterByRegion(event, '日本')">日本</button>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">价格</span>
+            <button class="filter-btn" onclick="filterByPrice(event, '全部')">全部</button>
+            <button class="filter-btn" onclick="filterByPrice(event, '200以下')">200以下</button>
+            <button class="filter-btn" onclick="filterByPrice(event, '200-500')">200-500</button>
+            <button class="filter-btn" onclick="filterByPrice(event, '500以上')">500以上</button>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">泥煤</span>
+            <button class="filter-btn" onclick="filterByPeat(event, '全部')">全部</button>
+            <button class="filter-btn" onclick="filterByPeat(event, '无')">无泥煤</button>
+            <button class="filter-btn" onclick="filterByPeat(event, '轻')">轻度</button>
+            <button class="filter-btn" onclick="filterByPeat(event, '中')">中度</button>
+            <button class="filter-btn" onclick="filterByPeat(event, '重')">重度</button>
+        </div>
+    </div>
+</div>
+
+<div class="content">
+    <div class="view active" id="mapView"><div id="map"></div></div>
+    <div class="view" id="listView"><div class="whisky-grid" id="whiskyGrid"></div></div>
+    <div class="view" id="collectionView"><div class="whisky-grid" id="collectionGrid"></div></div>
+    <div class="view" id="detailView"></div>
+</div>
+
+<script>
+/* ====== 数据层（由 Python 脚本替换）====== */
+const whiskyDatabase = [{"id":1,"name":"阿贝10年","nameEn":"Ardbeg 10","region":"艾雷岛","price":"400-500","abv":46,"age":10,"cask":"波本桶","peat":9,"flavor":"泥煤/消毒水/海盐/烟熏","tags":["泥煤","重口味","经典"]},{"id":2,"name":"拉弗格10年","nameEn":"Laphroaig 10","region":"艾雷岛","price":"350-450","abv":43,"age":10,"cask":"波本桶","peat":10,"flavor":"药水/烟熏/海藻/泥煤","tags":["泥煤","重口味","入门"]},{"id":3,"name":"波摩12年","nameEn":"Bowmore 12","region":"艾雷岛","price":"400-500","abv":43,"age":12,"cask":"雪莉+波本","peat":6,"flavor":"热带水果/烟熏/海盐","tags":["雪莉","果香","平衡"]},{"id":4,"name":"拉加维林16年","nameEn":"Lagavulin 16","region":"艾雷岛","price":"600-800","abv":43,"age":16,"cask":"波本桶","peat":9,"flavor":"泥煤/干果/烟熏/海洋","tags":["经典","泥煤","高端"]},{"id":5,"name":"布赫拉迪泥煤怪兽","nameEn":"Bruichladdich Octomore","region":"艾雷岛","price":"800-1200","abv":58,"age":5,"cask":"波本桶","peat":10,"flavor":"超重泥煤/烟熏/火烤","tags":["泥煤","收藏","限量"]},{"id":6,"name":"阿贝乌干达","nameEn":"Ardbeg Uigeadail","region":"艾雷岛","price":"500-700","abv":54.2,"age":0,"cask":"雪莉桶","peat":9,"flavor":"泥煤/干果/雪莉甜","tags":["雪莉","重泥煤","推荐"]},{"id":7,"name":"卡尔里拉12年","nameEn":"Caol Ila 12","region":"艾雷岛","price":"350-450","abv":43,"age":12,"cask":"波本桶","peat":8,"flavor":"泥煤/柠檬/烟熏","tags":["泥煤","入门","性价比"]},{"id":8,"name":"布纳哈本12年","nameEn":"Bunnahabhain 12","region":"艾雷岛","price":"400-500","abv":46.3,"age":12,"cask":"波本桶","peat":2,"flavor":"坚果/水果/轻微泥煤","tags":["轻泥煤","平衡","小众"]},{"id":9,"name":"布赫拉迪18年","nameEn":"Bruichladdich 18","region":"艾雷岛","price":"600-800","abv":50,"age":18,"cask":"波本桶","peat":3,"flavor":"水果/香草/轻微泥煤","tags":["小众","高端","易饮"]},{"id":10,"name":"格兰菲迪12年","nameEn":"Glenfiddich 12","region":"斯佩塞","price":"180-220","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"梨子/青苹果/花香","tags":["入门","果香","经典"]},{"id":11,"name":"百富12年双桶","nameEn":"Balvenie 12 DoubleWood","region":"斯佩塞","price":"300-400","abv":40,"age":12,"cask":"波本+雪莉","peat":0,"flavor":"蜂蜜/香草/干果/雪莉","tags":["雪莉","蜂蜜","高端"]},{"id":12,"name":"麦卡伦12年雪莉桶","nameEn":"Macallan 12 Sherry Oak","region":"斯佩塞","price":"800-1000","abv":40,"age":12,"cask":"雪莉桶","peat":0,"flavor":"干果/香料/雪莉甜","tags":["雪莉","高端","收藏"]},{"id":13,"name":"本利亚克10年","nameEn":"BenRiach 10","region":"斯佩塞","price":"350-450","abv":43,"age":10,"cask":"波本桶","peat":3,"flavor":"水果/香草/轻微泥煤","tags":["小众","泥煤","性价比"]},{"id":14,"name":"格兰威特12年","nameEn":"The Glenlivet 12","region":"斯佩塞","price":"200-280","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"青苹果/杏仁/花香","tags":["入门","经典","果香"]},{"id":15,"name":"亚伯乐12年","nameEn":"Aberlour 12","region":"斯佩塞","price":"300-400","abv":40,"age":12,"cask":"雪莉+波本","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":16,"name":"格兰花格12年","nameEn":"Glenfarclas 12","region":"斯佩塞","price":"300-400","abv":43,"age":12,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/坚果","tags":["雪莉","传统","性价比"]},{"id":17,"name":"克莱力多12年","nameEn":"Craigellachie 12","region":"斯佩塞","price":"400-500","abv":46,"age":12,"cask":"波本桶","peat":2,"flavor":"热带水果/香草/麦芽","tags":["小众","高端","独特"]},{"id":18,"name":"拓趣12年","nameEn":"Tormore 12","region":"斯佩塞","price":"350-450","abv":43,"age":12,"cask":"波本桶","peat":0,"flavor":"香草/柠檬/麦芽","tags":["小众","入门","性价比"]},{"id":19,"name":"苏格登12年","nameEn":"Singleton of Dufftown 12","region":"斯佩塞","price":"200-280","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"水果/麦芽/柔和","tags":["入门","柔和","经典"]},{"id":20,"name":"麦卡伦18年","nameEn":"Macallan 18","region":"斯佩塞","price":"2000-3000","abv":43,"age":18,"cask":"雪莉桶","peat":0,"flavor":"干果/香料/雪莉甜","tags":["雪莉","收藏","顶级"]},{"id":21,"name":"百富17年双桶","nameEn":"Balvenie 17 DoubleWood","region":"斯佩塞","price":"500-700","abv":43,"age":17,"cask":"波本+雪莉","peat":0,"flavor":"蜂蜜/雪莉/香草","tags":["雪莉","蜂蜜","高端"]},{"id":22,"name":"格兰菲迪15年","nameEn":"Glenfiddich 15","region":"斯佩塞","price":"300-400","abv":40,"age":15,"cask":"雪莉+波本","peat":0,"flavor":"雪莉甜/梨子/香料","tags":["雪莉","性价比","推荐"]},{"id":23,"name":"阿贝5年","nameEn":"Ardbeg 5","region":"艾雷岛","price":"400-500","abv":47.2,"age":5,"cask":"波本桶","peat":9,"flavor":"泥煤/消毒水/烟熏","tags":["泥煤","年轻","小众"]},{"id":24,"name":"拉弗格 quarter cask","nameEn":"Laphroaig QC","region":"艾雷岛","price":"400-500","abv":48,"age":0,"cask":"小桶","peat":10,"flavor":"泥煤/浓郁/雪莉","tags":["泥煤","重口味","限量"]},{"id":25,"name":"波摩18年","nameEn":"Bowmore 18","region":"艾雷岛","price":"600-800","abv":43,"age":18,"cask":"雪莉桶","peat":6,"flavor":"干果/巧克力/烟熏","tags":["雪莉","高端","推荐"]},{"id":26,"name":"麦卡伦 gold","nameEn":"Macallan Gold","region":"斯佩塞","price":"500-700","abv":40,"age":0,"cask":"雪莉桶","peat":0,"flavor":"蜂蜜/香草/雪莉","tags":["雪莉","入门高端","推荐"]},{"id":27,"name":"格兰多纳12年","nameEn":"Glendronach 12","region":"高地","price":"400-500","abv":43,"age":12,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":28,"name":"格兰花格105","nameEn":"Glenfarclas 105","region":"斯佩塞","price":"400-500","abv":60,"age":0,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/胡椒/干果","tags":["雪莉","单桶","性价比"]},{"id":29,"name":"欧本14年","nameEn":"Oban 14","region":"高地","price":"400-500","abv":43,"age":14,"cask":"波本桶","peat":3,"flavor":"海盐/柠檬/烟熏","tags":["岛屿风格","海盐","经典"]},{"id":30,"name":"克莱格拉14年","nameEn":"Clynelish 14","region":"高地","price":"500-600","abv":46,"age":14,"cask":"波本桶","peat":0,"flavor":"蜡质/柠檬/香草","tags":["蜡质","独特","高端"]},{"id":31,"name":"达尔摩12年","nameEn":"Dalmore 12","region":"高地","price":"500-700","abv":40,"age":12,"cask":"雪莉+波本","peat":0,"flavor":"巧克力/干果/雪莉甜","tags":["雪莉","高端","推荐"]},{"id":32,"name":"格兰杰10年","nameEn":"Glenmorangie 10","region":"高地","price":"250-350","abv":43,"age":10,"cask":"波本桶","peat":0,"flavor":"花香/柑橘/香草","tags":["花香","入门","性价比"]},{"id":33,"name":"达尔摩18年","nameEn":"Dalmore 18","region":"高地","price":"1500-2000","abv":43,"age":18,"cask":"雪莉+波本","peat":0,"flavor":"巧克力/干果/香料","tags":["高端","雪莉","推荐"]},{"id":34,"name":"格兰杰雪莉桶","nameEn":"Glenmorangie Lasanta","region":"高地","price":"350-450","abv":43,"age":12,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":35,"name":"欧本18年","nameEn":"Oban 18","region":"高地","price":"600-800","abv":43,"age":18,"cask":"波本桶","peat":3,"flavor":"海盐/干果/烟熏","tags":["海盐","高端","推荐"]},{"id":36,"name":"克莱格拉18年","nameEn":"Clynelish 18","region":"高地","price":"600-800","abv":46,"age":18,"cask":"波本桶","peat":0,"flavor":"蜡质/热带水果/香草","tags":["蜡质","高端","小众"]},{"id":37,"name":"达尔摩15年","nameEn":"Dalmore 15","region":"高地","price":"800-1000","abv":40,"age":15,"cask":"雪莉桶","peat":0,"flavor":"巧克力/干果/香料","tags":["雪莉","高端","推荐"]},{"id":38,"name":"格兰杰18年","nameEn":"Glenmorangie 18","region":"高地","price":"500-700","abv":43,"age":18,"cask":"波本桶","peat":0,"flavor":"花香/柑橘/香草","tags":["花香","高端","推荐"]},{"id":39,"name":"欧本16年","nameEn":"Oban 16","region":"高地","price":"500-700","abv":43,"age":16,"cask":"波本桶","peat":3,"flavor":"海盐/柠檬/烟熏","tags":["海盐","高端","小众"]},{"id":40,"name":"克莱格拉19年","nameEn":"Clynelish 19","region":"高地","price":"600-800","abv":46,"age":19,"cask":"波本桶","peat":0,"flavor":"蜡质/热带水果/香料","tags":["蜡质","高端","小众"]},{"id":41,"name":"格兰杰12年雪莉桶","nameEn":"Glenmorangie 12 Sherry","region":"高地","price":"400-600","abv":43,"age":12,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香草","tags":["雪莉","性价比","推荐"]},{"id":42,"name":"达尔摩25年","nameEn":"Dalmore 25","region":"高地","price":"3000-5000","abv":42,"age":25,"cask":"雪莉桶","peat":0,"flavor":"巧克力/干果/香料","tags":["收藏","顶级","高端"]},{"id":43,"name":"格兰多纳15年","nameEn":"Glendronach 15","region":"高地","price":"500-700","abv":43,"age":15,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":44,"name":"欧肯特轩12年","nameEn":"Auchentoshan 12","region":"低地","price":"250-350","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"柑橘/花香/柔和","tags":["低地","柔和","入门"]},{"id":45,"name":"格兰昆奇12年","nameEn":"Glenkinchie 12","region":"低地","price":"300-400","abv":43,"age":12,"cask":"波本桶","peat":0,"flavor":"花香/薄荷/麦芽","tags":["低地","花香","小众"]},{"id":46,"name":"欧肯特轩18年","nameEn":"Auchentoshan 18","region":"低地","price":"500-700","abv":43,"age":18,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/柔和","tags":["低地","雪莉","高端"]},{"id":47,"name":"格兰昆奇18年","nameEn":"Glenkinchie 18","region":"低地","price":"500-700","abv":43,"age":18,"cask":"雪莉桶","peat":0,"flavor":"花香/雪莉甜/麦芽","tags":["低地","花香","高端"]},{"id":48,"name":"小磨坊12年","nameEn":"Littlemill 12","region":"低地","price":"800-1200","abv":43,"age":12,"cask":"波本桶","peat":0,"flavor":"花香/柑橘/柔和","tags":["低地","收藏","小众"]},{"id":49,"name":"云顶10年","nameEn":"Springbank 10","region":"坎贝尔镇","price":"400-500","abv":46,"age":10,"cask":"波本桶","peat":4,"flavor":"泥煤/海盐/油润","tags":["手工","泥煤","小众"]},{"id":50,"name":"格伦斯克洛伊12年","nameEn":"Glenscotia 12","region":"坎贝尔镇","price":"350-450","abv":46,"age":12,"cask":"波本桶","peat":2,"flavor":"热带水果/香草/麦芽","tags":["小众","坎贝尔镇","性价比"]},{"id":51,"name":"云顶12年","nameEn":"Springbank 12","region":"坎贝尔镇","price":"500-700","abv":46,"age":12,"cask":"雪莉桶","peat":4,"flavor":"泥煤/雪莉/油润","tags":["手工","雪莉","小众"]},{"id":52,"name":"格伦斯克洛伊15年","nameEn":"Glenscotia 15","region":"坎贝尔镇","price":"500-700","abv":46,"age":15,"cask":"雪莉桶","peat":2,"flavor":"热带水果/雪莉/香料","tags":["小众","坎贝尔镇","高端"]},{"id":53,"name":"云顶18年","nameEn":"Springbank 18","region":"坎贝尔镇","price":"800-1200","abv":46,"age":18,"cask":"雪莉桶","peat":4,"flavor":"泥煤/雪莉/油润","tags":["手工","雪莉","收藏"]},{"id":54,"name":"泰斯卡10年","nameEn":"Talisker 10","region":"岛屿","price":"300-350","abv":45.8,"age":10,"cask":"波本桶","peat":7,"flavor":"海盐/烟熏/黑胡椒","tags":["海盐","泥煤","经典"]},{"id":55,"name":"高原骑士18年","nameEn":"Highland Park 18","region":"岛屿","price":"600-800","abv":43,"age":18,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/干果/烟熏","tags":["雪莉","高端","平衡"]},{"id":56,"name":"泰斯卡18年","nameEn":"Talisker 18","region":"岛屿","price":"500-700","abv":45.8,"age":18,"cask":"波本桶","peat":7,"flavor":"海盐/烟熏/黑胡椒","tags":["海盐","泥煤","高端"]},{"id":57,"name":"高原骑士12年","nameEn":"Highland Park 12","region":"岛屿","price":"350-450","abv":43,"age":12,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/泥煤/干果","tags":["雪莉","平衡","经典"]},{"id":58,"name":"泰斯卡43年","nameEn":"Talisker 43yo","region":"岛屿","price":"15000+","abv":49.1,"age":43,"cask":"雪莉桶","peat":7,"flavor":"海盐/烟熏/深色水果","tags":["收藏","限量","顶级"]},{"id":59,"name":"高原骑士12年雪莉桶","nameEn":"HP 12 Sherry","region":"岛屿","price":"500-600","abv":43,"age":12,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/干果/雪莉","tags":["雪莉","海盐","推荐"]},{"id":60,"name":"艾伦10年","nameEn":"Arran 10","region":"岛屿","price":"350-450","abv":46,"age":10,"cask":"波本桶","peat":2,"flavor":"柑橘/香草/麦芽","tags":["小众","岛屿","性价比"]},{"id":61,"name":"杰瑞10年","nameEn":"Jura 10","region":"岛屿","price":"300-400","abv":43,"age":10,"cask":"波本桶","peat":5,"flavor":"坚果/烟熏/海盐","tags":["小众","岛屿","性价比"]},{"id":62,"name":"泰斯卡25年","nameEn":"Talisker 25","region":"岛屿","price":"2000-3000","abv":45.8,"age":25,"cask":"波本桶","peat":7,"flavor":"海盐/烟熏/干果","tags":["海盐","收藏","高端"]},{"id":63,"name":"高原骑士21年","nameEn":"HP 21","region":"岛屿","price":"1500-2000","abv":43,"age":21,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/干果/香料","tags":["雪莉","收藏","高端"]},{"id":64,"name":"山崎12年","nameEn":"Yamazaki 12","region":"日本","price":"800-1200","abv":43,"age":12,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/樱花","tags":["雪莉","日本","收藏"]},{"id":65,"name":"白州12年","nameEn":"Hakushu 12","region":"日本","price":"600-900","abv":43,"age":12,"cask":"波本桶","peat":2,"flavor":"青苹果/薄荷/花香","tags":["日本","花香","独特"]},{"id":66,"name":"响17年","nameEn":"Hibiki 17","region":"日本","price":"1200-1800","abv":43,"age":17,"cask":"多种桶","peat":0,"flavor":"蜂蜜/花香/平衡","tags":["日本","调和","高端"]},{"id":67,"name":"余市10年","nameEn":"Yoichi 10","region":"日本","price":"500-800","abv":45,"age":10,"cask":"波本桶","peat":6,"flavor":"泥煤/烟熏/热带水果","tags":["日本","泥煤","小众"]},{"id":68,"name":"宫城峡10年","nameEn":"Miyagikyo 10","region":"日本","price":"500-700","abv":45,"age":10,"cask":"波本桶","peat":2,"flavor":"水果/花香/柔和","tags":["日本","柔和","小众"]},{"id":69,"name":"山崎18年","nameEn":"Yamazaki 18","region":"日本","price":"3000-5000","abv":43,"age":18,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","日本","收藏"]},{"id":70,"name":"白州18年","nameEn":"Hakushu 18","region":"日本","price":"2000-3000","abv":43,"age":18,"cask":"波本桶","peat":2,"flavor":"花香/薄荷/烟熏","tags":["日本","花香","高端"]},{"id":71,"name":"秩父 IPA","nameEn":"Chichibu IPA","region":"日本","price":"800-1200","abv":48,"age":3,"cask":"IPA 啤酒桶","peat":3,"flavor":"啤酒花/热带水果/香料","tags":["日本","小众","创新"]},{"id":72,"name":"长滨信任","nameEn":"Nagahama Trust","region":"日本","price":"500-700","abv":47,"age":3,"cask":"波本桶","peat":2,"flavor":"水果/麦芽/香草","tags":["日本","年轻","小众"]},{"id":73,"name":"响21年","nameEn":"Hibiki 21","region":"日本","price":"3000-5000","abv":43,"age":21,"cask":"多种桶","peat":0,"flavor":"蜂蜜/花香/平衡","tags":["日本","调和","收藏"]},{"id":74,"name":"余市20年","nameEn":"Yoichi 20","region":"日本","price":"3000-5000","abv":45,"age":20,"cask":"波本桶","peat":6,"flavor":"泥煤/烟熏/干果","tags":["日本","泥煤","收藏"]},{"id":75,"name":"宫城峡18年","nameEn":"Miyagikyo 18","region":"日本","price":"1500-2000","abv":45,"age":18,"cask":"波本桶","peat":2,"flavor":"水果/花香/雪莉","tags":["日本","柔和","高端"]},{"id":76,"name":"阿穆特12年","nameEn":"Amrut 12","region":"印度","price":"300-400","abv":46,"age":12,"cask":"波本桶","peat":0,"flavor":"热带水果/香料/麦芽/独特","tags":["热带","香料","小众","独特"]},{"id":77,"name":"保罗约翰","nameEn":"Paul John","region":"印度","price":"300-500","abv":46,"age":0,"cask":"波本桶","peat":2,"flavor":"热带水果/香料/香草","tags":["热带","香料","小众"]},{"id":78,"name":"阿贝旋风","nameEn":"Ardbeg Corryvreckan","region":"艾雷岛","price":"500-700","abv":57.1,"age":0,"cask":"波本桶","peat":9,"flavor":"泥煤/胡椒/深色水果","tags":["泥煤","重口味","限量"]},{"id":79,"name":"拉弗格18年","nameEn":"Laphroaig 18","region":"艾雷岛","price":"600-800","abv":43,"age":18,"cask":"波本+雪莉","peat":10,"flavor":"泥煤/干果/烟熏","tags":["泥煤","高端","雪莉"]},{"id":80,"name":"波摩25年","nameEn":"Bowmore 25","region":"艾雷岛","price":"1500-2000","abv":43,"age":25,"cask":"雪莉桶","peat":6,"flavor":"干果/巧克力/烟熏","tags":["雪莉","收藏","高端"]},{"id":81,"name":"阿贝19年","nameEn":"Ardbeg 19","region":"艾雷岛","price":"600-800","abv":46,"age":19,"cask":"雪莉桶","peat":9,"flavor":"泥煤/雪莉甜/烟熏","tags":["雪莉","重泥煤","推荐"]},{"id":82,"name":"格兰菲迪18年","nameEn":"Glenfiddich 18","region":"斯佩塞","price":"500-700","abv":40,"age":18,"cask":"雪莉+波本","peat":0,"flavor":"雪莉甜/梨子/香料","tags":["雪莉","性价比","推荐"]},{"id":83,"name":"百富21年","nameEn":"Balvenie 21","region":"斯佩塞","price":"800-1200","abv":43,"age":21,"cask":"雪莉+波本","peat":0,"flavor":"蜂蜜/雪莉/香草","tags":["雪莉","蜂蜜","高端"]},{"id":84,"name":"麦卡伦25年","nameEn":"Macallan 25","region":"斯佩塞","price":"5000-8000","abv":43,"age":25,"cask":"雪莉桶","peat":0,"flavor":"干果/香料/雪莉甜","tags":["雪莉","收藏","顶级"]},{"id":85,"name":"本利亚克12年","nameEn":"BenRiach 12","region":"斯佩塞","price":"400-500","abv":43,"age":12,"cask":"波本桶","peat":3,"flavor":"水果/香草/轻微泥煤","tags":["小众","泥煤","性价比"]},{"id":86,"name":"格兰威特18年","nameEn":"The Glenlivet 18","region":"斯佩塞","price":"500-700","abv":43,"age":18,"cask":"波本桶","peat":0,"flavor":"青苹果/杏仁/花香","tags":["入门","经典","高端"]},{"id":87,"name":"亚伯乐16年","nameEn":"Aberlour 16","region":"斯佩塞","price":"500-800","abv":43,"age":16,"cask":"雪莉+波本","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":88,"name":"克莱力多17年","nameEn":"Craigellachie 17","region":"斯佩塞","price":"500-700","abv":46,"age":17,"cask":"波本桶","peat":2,"flavor":"热带水果/雪莉/香料","tags":["小众","高端","独特"]},{"id":89,"name":"拓趣16年","nameEn":"Tormore 16","region":"斯佩塞","price":"500-700","abv":43,"age":16,"cask":"波本桶","peat":0,"flavor":"香草/柠檬/麦芽","tags":["小众","入门","性价比"]},{"id":90,"name":"苏格登15年","nameEn":"Singleton 15","region":"斯佩塞","price":"300-500","abv":40,"age":15,"cask":"波本桶","peat":0,"flavor":"水果/麦芽/柔和","tags":["入门","柔和","性价比"]},{"id":91,"name":"欧本21年","nameEn":"Oban 21","region":"高地","price":"800-1200","abv":43,"age":21,"cask":"波本桶","peat":3,"flavor":"海盐/干果/烟熏","tags":["海盐","高端","推荐"]},{"id":92,"name":"克莱格拉23年","nameEn":"Clynelish 23","region":"高地","price":"1200-1800","abv":46,"age":23,"cask":"波本桶","peat":0,"flavor":"蜡质/热带水果/香草","tags":["蜡质","高端","收藏"]},{"id":93,"name":"达尔摩25年","nameEn":"Dalmore 25","region":"高地","price":"3000-5000","abv":42,"age":25,"cask":"雪莉桶","peat":0,"flavor":"巧克力/干果/香料","tags":["收藏","顶级","高端"]},{"id":94,"name":"格兰杰25年","nameEn":"Glenmorangie 25","region":"高地","price":"1500-2000","abv":43,"age":25,"cask":"波本桶","peat":0,"flavor":"花香/柑橘/香草","tags":["花香","高端","收藏"]},{"id":95,"name":"欧本19年","nameEn":"Oban 19","region":"高地","price":"600-800","abv":43,"age":19,"cask":"波本桶","peat":3,"flavor":"海盐/柠檬/烟熏","tags":["海盐","高端","小众"]},{"id":96,"name":"欧肯特轩21年","nameEn":"Auchentoshan 21","region":"低地","price":"800-1200","abv":43,"age":21,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/柔和","tags":["低地","雪莉","高端"]},{"id":97,"name":"格兰昆奇23年","nameEn":"Glenkinchie 23","region":"低地","price":"800-1200","abv":43,"age":23,"cask":"雪莉桶","peat":0,"flavor":"花香/雪莉甜/麦芽","tags":["低地","花香","高端"]},{"id":98,"name":"云顶25年","nameEn":"Springbank 25","region":"坎贝尔镇","price":"2000-3000","abv":46,"age":25,"cask":"雪莉桶","peat":4,"flavor":"泥煤/雪莉/油润","tags":["手工","雪莉","收藏"]},{"id":99,"name":"格伦斯克洛伊18年","nameEn":"Glenscotia 18","region":"坎贝尔镇","price":"600-800","abv":46,"age":18,"cask":"雪莉桶","peat":2,"flavor":"热带水果/雪莉/香料","tags":["小众","坎贝尔镇","高端"]},{"id":100,"name":"泰斯卡30年","nameEn":"Talisker 30","region":"岛屿","price":"3000-5000","abv":45.8,"age":30,"cask":"波本桶","peat":7,"flavor":"海盐/烟熏/干果","tags":["海盐","收藏","顶级"]},{"id":101,"name":"高原骑士30年","nameEn":"HP 30","region":"岛屿","price":"3000-5000","abv":43,"age":30,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/干果/香料","tags":["雪莉","收藏","顶级"]},{"id":102,"name":"艾伦18年","nameEn":"Arran 18","region":"岛屿","price":"500-700","abv":46,"age":18,"cask":"雪莉桶","peat":2,"flavor":"柑橘/雪莉/香草","tags":["小众","岛屿","性价比"]},{"id":103,"name":"杰瑞18年","nameEn":"Jura 18","region":"岛屿","price":"500-700","abv":43,"age":18,"cask":"雪莉桶","peat":5,"flavor":"坚果/雪莉/烟熏","tags":["小众","岛屿","高端"]},{"id":104,"name":"泰斯卡15年","nameEn":"Talisker 15","region":"岛屿","price":"500-700","abv":45.8,"age":15,"cask":"波本桶","peat":7,"flavor":"海盐/烟熏/黑胡椒","tags":["海盐","泥煤","推荐"]},{"id":105,"name":"山崎25年","nameEn":"Yamazaki 25","region":"日本","price":"8000-12000","abv":43,"age":25,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","日本","收藏"]},{"id":106,"name":"白州25年","nameEn":"Hakushu 25","region":"日本","price":"5000-8000","abv":43,"age":25,"cask":"波本桶","peat":2,"flavor":"花香/薄荷/烟熏","tags":["日本","花香","收藏"]},{"id":107,"name":"响30年","nameEn":"Hibiki 30","region":"日本","price":"8000-12000","abv":43,"age":30,"cask":"多种桶","peat":0,"flavor":"蜂蜜/花香/平衡","tags":["日本","调和","收藏"]},{"id":108,"name":"余市25年","nameEn":"Yoichi 25","region":"日本","price":"5000-8000","abv":45,"age":25,"cask":"波本桶","peat":6,"flavor":"泥煤/烟熏/干果","tags":["日本","泥煤","收藏"]},{"id":109,"name":"宫城峡25年","nameEn":"Miyagikyo 25","region":"日本","price":"3000-5000","abv":45,"age":25,"cask":"波本桶","peat":2,"flavor":"水果/花香/雪莉","tags":["日本","柔和","高端"]},{"id":110,"name":"阿穆特陈酿","nameEn":"Amrut Fusion","region":"印度","price":"500-600","abv":50,"age":0,"cask":"波本桶","peat":0,"flavor":"热带水果/香料/麦芽","tags":["热带","香料","小众"]},{"id":111,"name":"保罗约翰21年","nameEn":"Paul John 21","region":"印度","price":"800-1200","abv":46,"age":21,"cask":"波本桶","peat":2,"flavor":"热带水果/香料/香草","tags":["热带","香料","小众"]},{"id":112,"name":"大摩62年","nameEn":"Dalmore 62","region":"高地","price":"20000+","abv":40,"age":62,"cask":"雪莉桶","peat":0,"flavor":"巧克力/干果/香料","tags":["收藏","顶级","高端"]},{"id":113,"name":"麦卡伦1926","nameEn":"Macallan 1926","region":"斯佩塞","price":"20000+","abv":40,"age":60,"cask":"雪莉桶","peat":0,"flavor":"干果/香料/雪莉甜","tags":["收藏","顶级","高端"]},{"id":114,"name":"齐侯门塞纳滩","nameEn":"Kilchoman Sanaig","region":"艾雷岛","price":"500-700","abv":46,"age":0,"cask":"雪莉桶","peat":8,"flavor":"泥煤/雪莉甜/海盐","tags":["泥煤","雪莉","小众"]},{"id":115,"name":"齐侯门玛吉湾","nameEn":"Kilchoman Machir Bay","region":"艾雷岛","price":"350-500","abv":46,"age":0,"cask":"波本+雪莉","peat":8,"flavor":"泥煤/柠檬/雪莉","tags":["泥煤","小众","性价比"]},{"id":116,"name":"布赫拉迪经典","nameEn":"Bruichladdich Classic LWM","region":"艾雷岛","price":"300-450","abv":50,"age":0,"cask":"波本桶","peat":0,"flavor":"水果/麦芽/轻微泥煤","tags":["轻泥煤","无年份","小众"]},{"id":117,"name":"布纳哈本18年","nameEn":"Bunnahabhain 18","region":"艾雷岛","price":"600-900","abv":46.3,"age":18,"cask":"雪莉桶","peat":0,"flavor":"干果/雪莉甜/坚果","tags":["雪莉","高端","小众"]},{"id":118,"name":"卡尔里拉18年","nameEn":"Caol Ila 18","region":"艾雷岛","price":"600-900","abv":43,"age":18,"cask":"波本桶","peat":8,"flavor":"泥煤/干果/烟熏","tags":["泥煤","高端","推荐"]},{"id":119,"name":"拉弗格30年","nameEn":"Laphroaig 30","region":"艾雷岛","price":"3000-5000","abv":43,"age":30,"cask":"波本桶","peat":10,"flavor":"泥煤/干果/烟熏","tags":["泥煤","收藏","顶级"]},{"id":120,"name":"格兰菲迪21年","nameEn":"Glenfiddich 21","region":"斯佩塞","price":"800-1200","abv":40,"age":21,"cask":"朗姆桶","peat":0,"flavor":"热带水果/朗姆甜/香料","tags":["朗姆桶","高端","推荐"]},{"id":121,"name":"百富25年","nameEn":"Balvenie 25","region":"斯佩塞","price":"1500-2500","abv":43,"age":25,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/蜂蜜","tags":["雪莉","收藏","高端"]},{"id":122,"name":"麦卡伦25年","nameEn":"Macallan 25","region":"斯佩塞","price":"5000-8000","abv":43,"age":25,"cask":"雪莉桶","peat":0,"flavor":"干果/香料/雪莉甜","tags":["雪莉","收藏","顶级"]},{"id":123,"name":"本利亚克25年","nameEn":"BenRiach 25","region":"斯佩塞","price":"1200-1800","abv":46,"age":25,"cask":"波本桶","peat":0,"flavor":"水果/香草/轻微泥煤","tags":["小众","泥煤","高端"]},{"id":124,"name":"格兰威特18年","nameEn":"The Glenlivet 18","region":"斯佩塞","price":"500-800","abv":43,"age":18,"cask":"雪莉+波本","peat":0,"flavor":"青苹果/杏仁/雪莉","tags":["入门","经典","高端"]},{"id":125,"name":"亚伯乐18年","nameEn":"Aberlour 18","region":"斯佩塞","price":"500-800","abv":43,"age":18,"cask":"雪莉+波本","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":126,"name":"格兰花格25年","nameEn":"Glenfarclas 25","region":"斯佩塞","price":"1500-2500","abv":43,"age":25,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/坚果","tags":["雪莉","传统","高端"]},{"id":127,"name":"克莱力多19年","nameEn":"Craigellachie 19","region":"斯佩塞","price":"600-900","abv":46,"age":19,"cask":"波本桶","peat":0,"flavor":"热带水果/香草/麦芽","tags":["小众","高端","独特"]},{"id":128,"name":"格兰多纳21年","nameEn":"Glendronach 21","region":"高地","price":"800-1200","abv":46,"age":21,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["雪莉","性价比","推荐"]},{"id":129,"name":"欧本16年","nameEn":"Oban 16","region":"高地","price":"500-700","abv":43,"age":16,"cask":"波本桶","peat":0,"flavor":"海盐/柠檬/烟熏","tags":["海盐","高端","小众"]},{"id":130,"name":"高原骑士12年雪莉桶","nameEn":"Highland Park 12 Sherry","region":"岛屿","price":"500-600","abv":43,"age":12,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/干果/雪莉","tags":["雪莉","海盐","推荐"]},{"id":131,"name":"皇家布莱克拉21年","nameEn":"Royal Brackla 21","region":"高地","price":"800-1200","abv":46,"age":21,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/蜂蜜","tags":["雪莉","高端","小众"]},{"id":132,"name":"格兰杰25年","nameEn":"Glenmorangie 25","region":"高地","price":"1500-2500","abv":43,"age":25,"cask":"波本桶","peat":0,"flavor":"花香/柑橘/香草","tags":["花香","高端","推荐"]},{"id":133,"name":"图拉多12年","nameEn":"Teeling 12","region":"爱尔兰","price":"500-700","abv":46,"age":12,"cask":"朗姆桶","peat":0,"flavor":"热带水果/朗姆甜/香料","tags":["爱尔兰","朗姆桶","小众"]},{"id":134,"name":"知更鸟12年","nameEn":"Redbreast 12","region":"爱尔兰","price":"300-500","abv":40,"age":12,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/坚果","tags":["爱尔兰","雪莉","性价比"]},{"id":135,"name":"杰克丹尼单桶","nameEn":"Jack Daniel's Single Barrel","region":"美国","price":"300-500","abv":45,"age":0,"cask":"新橡木桶","peat":0,"flavor":"焦糖/香草/橡木","tags":["美国","波本","单桶"]},{"id":136,"name":"芝华士25年","nameEn":"Chivas Regal 25","region":"苏格兰","price":"500-800","abv":40,"age":25,"cask":"多种桶","peat":0,"flavor":"蜂蜜/花香/平衡","tags":["调和","高端","推荐"]},{"id":137,"name":"响30年","nameEn":"Hibiki 30","region":"日本","price":"8000-12000","abv":43,"age":30,"cask":"多种桶","peat":0,"flavor":"蜂蜜/花香/平衡","tags":["日本","调和","收藏"]},{"id":138,"name":"秩父2020","nameEn":"Chichibu 2020","region":"日本","price":"1500-2500","abv":48,"age":3,"cask":"波本桶","peat":0,"flavor":"水果/麦芽/香草","tags":["日本","年轻","小众"]},{"id":139,"name":"噶玛·兰经典","nameEn":"Kavalan Classic","region":"台湾","price":"300-500","abv":40,"age":0,"cask":"波本桶","peat":0,"flavor":"热带水果/香草/麦芽","tags":["台湾","热带","性价比"]},{"id":140,"name":"噶玛·兰雪莉桶","nameEn":"Kavalan Sherry Cask","region":"台湾","price":"500-800","abv":46,"age":0,"cask":"雪莉桶","peat":0,"flavor":"雪莉甜/干果/香料","tags":["台湾","雪莉","高端"]},{"id":141,"name":"高原骑士25年","nameEn":"Highland Park 25","region":"岛屿","price":"2000-3000","abv":43,"age":25,"cask":"雪莉桶","peat":4,"flavor":"石楠蜜/干果/烟熏","tags":["雪莉","收藏","高端"]},{"id":142,"name":"泰斯卡43年","nameEn":"Talisker 43","region":"岛屿","price":"15000+","abv":49.1,"age":43,"cask":"雪莉桶","peat":7,"flavor":"海盐/烟熏/深色水果","tags":["收藏","限量","顶级"]},{"id":143,"name":"大摩62年","nameEn":"Dalmore 62","region":"高地","price":"20000+","abv":40,"age":62,"cask":"雪莉桶","peat":0,"flavor":"巧克力/干果/香料","tags":["收藏","顶级","高端"]},{"id":144,"name":"格兰菲迪8年","nameEn":"Glenfiddich 8","region":"斯佩塞","price":"120-160","abv":40,"age":8,"cask":"波本桶","peat":0,"flavor":"梨子/青苹果/花香","tags":["年轻","果香","入门"]},{"id":145,"name":"格兰威特12年初版","nameEn":"Glenlivet 12 First Fill","region":"斯佩塞","price":"150-190","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"青苹果/杏仁/花香","tags":["入门","经典","果香"]},{"id":146,"name":"苏格登12年精选","nameEn":"Singleton Select","region":"斯佩塞","price":"130-170","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"水果/麦芽/柔和","tags":["入门","柔和","经典"]},{"id":147,"name":"百富8年","nameEn":"Balvenie 8","region":"斯佩塞","price":"150-190","abv":40,"age":8,"cask":"波本桶","peat":0,"flavor":"蜂蜜/香草/麦芽","tags":["年轻","蜂蜜","小众"]},{"id":148,"name":"格兰花格8年","nameEn":"Glenfarclas 8","region":"斯佩塞","price":"100-140","abv":40,"age":8,"cask":"波本桶","peat":0,"flavor":"麦芽/香草/轻微雪莉","tags":["年轻","性价比","小众"]},{"id":149,"name":"斯内普12年","nameEn":"Speyburn 12","region":"斯佩塞","price":"120-160","abv":40,"age":12,"cask":"波本桶","peat":0,"flavor":"水果/麦芽/香草","tags":["入门","性价比","小众"]},{"id":150,"name":"图里巴格12年","nameEn":"Tobermory 12","region":"岛屿","price":"150-190","abv":46.3,"age":12,"cask":"波本桶","peat":2,"flavor":"海盐/柠檬/麦芽","tags":["岛屿风格","海盐","小众"]},{"id":151,"name":"高原骑士10年","nameEn":"Highland Park 10","region":"岛屿","price":"160-190","abv":40,"age":10,"cask":"波本桶","peat":4,"flavor":"石楠蜜/海盐/烟熏","tags":["海盐","泥煤","入门"]},{"id":152,"name":"威雀12年","nameEn":"Famous Grouse 12","region":"苏格兰","price":"80-120","abv":40,"age":12,"cask":"多种桶","peat":0,"flavor":"蜂蜜/麦芽/平衡","tags":["调和","性价比","入门"]},{"id":153,"name":"珍宝12年","nameEn":"J&B 12","region":"苏格兰","price":"90-130","abv":40,"age":12,"cask":"多种桶","peat":0,"flavor":"蜂蜜/花香/平衡","tags":["调和","性价比","经典"]}];
+
+
+/* ====== 状态 ====== */
+var currentView = 'map';
+var currentRegion = '全部';
+var currentPrice = '全部';
+var currentPeat = '全部';
+var currentSearch = '';
+var mapInstance = null;
+
+/* ====== 工具函数 ====== */
+function parsePrice(priceStr) {
+    if (!priceStr) return 0;
+    if (priceStr.indexOf('+') !== -1) {
+        return parseInt(priceStr) || 99999;
+    }
+    if (priceStr.indexOf('-') !== -1) {
+        var parts = priceStr.split('-');
+        var a = parseInt(parts[0]) || 0;
+        var b = parseInt(parts[1]) || a;
+        return (a + b) / 2;
+    }
+    return parseInt(priceStr) || 0;
+}
+
+function getFilteredWhiskies() {
+    return whiskyDatabase.filter(function(w) {
+        var matchRegion = currentRegion === '全部' || w.region === currentRegion;
+        
+        var matchPrice = true;
+        var avgPrice = parsePrice(w.price);
+        if (currentPrice === '200以下') matchPrice = avgPrice < 200;
+        else if (currentPrice === '200-500') matchPrice = avgPrice >= 200 && avgPrice <= 500;
+        else if (currentPrice === '500以上') matchPrice = avgPrice > 500;
+        
+        var matchPeat = true;
+        if (currentPeat === '无') matchPeat = w.peat === 0;
+        else if (currentPeat === '轻') matchPeat = w.peat >= 1 && w.peat <= 3;
+        else if (currentPeat === '中') matchPeat = w.peat >= 4 && w.peat <= 6;
+        else if (currentPeat === '重') matchPeat = w.peat >= 7;
+        
+        var searchLower = currentSearch.toLowerCase();
+        var matchSearch = !currentSearch || 
+            w.name.indexOf(currentSearch) !== -1 ||
+            w.nameEn.toLowerCase().indexOf(searchLower) !== -1 ||
+            w.flavor.indexOf(currentSearch) !== -1 ||
+            w.region.indexOf(currentSearch) !== -1;
+            
+        return matchRegion && matchPrice && matchPeat && matchSearch;
+    });
+}
+
+/* ====== 视图切换 ====== */
+function switchView(view) {
+    currentView = view;
+    var tabs = document.querySelectorAll('.nav-tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+    var views = document.querySelectorAll('.view');
+    for (var i = 0; i < views.length; i++) views[i].classList.remove('active');
+    
+    if (view === 'map') {
+        tabs[0].classList.add('active');
+        document.getElementById('mapView').classList.add('active');
+        document.getElementById('searchBar').style.display = 'block';
+        if (mapInstance) mapInstance.invalidateSize();
+    } else if (view === 'list') {
+        tabs[1].classList.add('active');
+        document.getElementById('listView').classList.add('active');
+        document.getElementById('searchBar').style.display = 'block';
+        renderList();
+    } else if (view === 'favorites') {
+        tabs[2].classList.add('active');
+        document.getElementById('collectionView').classList.add('active');
+        document.getElementById('searchBar').style.display = 'none';
+        renderFavorites();
+    }
+}
+
+/* ====== 渲染列表 ====== */
+function renderList() {
+    var grid = document.getElementById('whiskyGrid');
+    var filtered = getFilteredWhiskies();
+    grid.innerHTML = '';
+    
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div style="color:#d4c5a0;padding:40px;text-align:center;grid-column:1/-1;">没有找到匹配的威士忌</div>';
+        return;
+    }
+    
+    for (var i = 0; i < filtered.length; i++) {
+        var w = filtered[i];
+        var card = document.createElement('div');
+        card.className = 'whisky-card';
+        card.innerHTML = '<div class="whisky-card-header">' +
+                '<div class="whisky-card-name">' + w.name + '</div>' +
+                '<div class="whisky-card-name-en">' + w.nameEn + '</div>' +
+            '</div>' +
+            '<div class="whisky-card-body">' +
+                '<div class="whisky-card-meta">' +
+                    '<span class="meta-tag">' + w.region + '</span>' +
+                    '<span class="meta-tag">' + w.abv + '% ABV</span>' +
+                    '<span class="meta-tag">' + (w.age ? w.age + '年' : '无年份') + '</span>' +
+                    '<span class="meta-tag">泥煤:' + w.peat + '/10</span>' +
+                '</div>' +
+                '<div class="whisky-card-flavor">' + w.flavor + '</div>' +
+                '<div class="whisky-card-price">¥' + w.price + '</div>' +
+                '<div class="whisky-card-actions">' +
+                    '<button class="action-btn fav-btn" onclick="event.stopPropagation();toggleFavorite(' + w.id + ')">❤️ 收藏</button>' +
+                    '<button class="action-btn note-btn" onclick="event.stopPropagation();showDetail(' + w.id + ')">查看详情</button>' +
+                '</div>' +
+            '</div>';
+        card.onclick = (function(id) { return function() { showDetail(id); }; })(w.id);
+        grid.appendChild(card);
+    }
+}
+
+/* ====== 收藏功能 ====== */
+function getFavorites() {
+    return JSON.parse(localStorage.getItem('favorites') || '[]');
+}
+
+function toggleFavorite(id) {
+    var favs = getFavorites();
+    var idx = favs.indexOf(id);
+    if (idx >= 0) favs.splice(idx, 1);
+    else favs.push(id);
+    localStorage.setItem('favorites', JSON.stringify(favs));
+    if (currentView === 'favorites') renderFavorites();
+    else if (currentView === 'list') renderList();
+}
+
+function renderFavorites() {
+    var grid = document.getElementById('collectionGrid');
+    var favs = getFavorites();
+    var favWhiskies = whiskyDatabase.filter(function(w) { return favs.indexOf(w.id) >= 0; });
+    grid.innerHTML = '';
+    
+    if (favWhiskies.length === 0) {
+        grid.innerHTML = '<div style="color:#d4c5a0;padding:40px;text-align:center;grid-column:1/-1;">还没有收藏任何威士忌</div>';
+        return;
+    }
+    
+    for (var i = 0; i < favWhiskies.length; i++) {
+        var w = favWhiskies[i];
+        var card = document.createElement('div');
+        card.className = 'whisky-card';
+        card.innerHTML = '<div class="whisky-card-header">' +
+                '<div class="whisky-card-name">' + w.name + '</div>' +
+                '<div class="whisky-card-name-en">' + w.nameEn + '</div>' +
+            '</div>' +
+            '<div class="whisky-card-body">' +
+                '<div class="whisky-card-meta">' +
+                    '<span class="meta-tag">' + w.region + '</span>' +
+                    '<span class="meta-tag">¥' + w.price + '</span>' +
+                '</div>' +
+                '<div class="whisky-card-actions">' +
+                    '<button class="action-btn fav-btn active" onclick="event.stopPropagation();toggleFavorite(' + w.id + ')">❤️ 已收藏</button>' +
+                    '<button class="action-btn note-btn" onclick="event.stopPropagation();showDetail(' + w.id + ')">查看详情</button>' +
+                '</div>' +
+            '</div>';
+        card.onclick = (function(id) { return function() { showDetail(id); }; })(w.id);
+        grid.appendChild(card);
+    }
+}
+
+/* ====== 详情页 ====== */
+function showDetail(id) {
+    var w = null;
+    for (var i = 0; i < whiskyDatabase.length; i++) {
+        if (whiskyDatabase[i].id === id) { w = whiskyDatabase[i]; break; }
+    }
+    if (!w) return;
+    
+    var views = document.querySelectorAll('.view');
+    for (var i = 0; i < views.length; i++) views[i].classList.remove('active');
+    document.getElementById('detailView').classList.add('active');
+    document.getElementById('searchBar').style.display = 'none';
+    
+    var notes = JSON.parse(localStorage.getItem('notes_' + id) || '[]');
+    var favs = getFavorites();
+    var isFav = favs.indexOf(id) >= 0;
+    
+    var html = '<div style="background:rgba(26,26,26,0.95);border:1px solid rgba(201,168,76,0.08);padding:40px;max-width:800px;margin:0 auto;">' +
+            '<button style="background:transparent;border:1px solid rgba(212,197,160,0.3);color:#d4c5a0;padding:8px 16px;cursor:pointer;font-size:13px;" onclick="goBack()">← 返回列表</button>' +
+            '<div style="margin-top:30px;">' +
+                '<h2 style="font-size:28px;font-weight:400;color:#c9a84c;letter-spacing:0.06em;">' + w.name + '</h2>' +
+                '<p class="detail-name-en">' + w.nameEn + '</p>' +
+                '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:30px;">' +
+                    '<div style="background:rgba(13,13,13,0.6);padding:14px 18px;border:1px solid rgba(201,168,76,0.08);">' +
+                        '<div style="font-size:10px;color:rgba(212,197,160,0.35);letter-spacing:0.12em;text-transform:uppercase;">产区</div>' +
+                        '<div style="font-size:15px;color:#d4c5a0;margin-top:6px;">' + w.region + '</div>' +
+                    '</div>' +
+                    '<div style="background:rgba(13,13,13,0.6);padding:14px 18px;border:1px solid rgba(201,168,76,0.08);">' +
+                        '<div style="font-size:10px;color:rgba(212,197,160,0.35);letter-spacing:0.12em;text-transform:uppercase;">价格</div>' +
+                        '<div style="font-size:15px;color:#c9a84c;margin-top:6px;">¥' + w.price + '</div>' +
+                    '</div>' +
+                    '<div style="background:rgba(13,13,13,0.6);padding:14px 18px;border:1px solid rgba(201,168,76,0.08);">' +
+                        '<div style="font-size:10px;color:rgba(212,197,160,0.35);letter-spacing:0.12em;text-transform:uppercase;">酒精度</div>' +
+                        '<div style="font-size:15px;color:#d4c5a0;margin-top:6px;">' + w.abv + '% ABV</div>' +
+                    '</div>' +
+                    '<div style="background:rgba(13,13,13,0.6);padding:14px 18px;border:1px solid rgba(201,168,76,0.08);">' +
+                        '<div style="font-size:10px;color:rgba(212,197,160,0.35);letter-spacing:0.12em;text-transform:uppercase;">桶型</div>' +
+                        '<div style="font-size:15px;color:#d4c5a0;margin-top:6px;">' + w.cask + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="margin-bottom:30px;">' +
+                    '<h3 style="font-size:16px;color:#c9a84c;margin-bottom:12px;letter-spacing:0.08em;">风味特征</h3>' +
+                    '<p style="color:rgba(212,197,160,0.7);line-height:1.8;">' + w.flavor + '</p>' +
+                '</div>' +
+                '<div style="display:flex;gap:14px;margin-bottom:30px;">' +
+                    '<button class="action-btn fav-btn ' + (isFav ? 'active' : '') + '" onclick="toggleFavorite(' + w.id + ');showDetail(' + w.id + ')">' + (isFav ? '❤️ 已收藏' : '🤍 收藏') + '</button>' +
+                    '<button class="action-btn note-btn" onclick="addNote(' + w.id + ')">📝 添加笔记</button>' +
+                '</div>' +
+                '<div>' +
+                    '<h3 style="font-size:16px;color:#c9a84c;margin-bottom:12px;letter-spacing:0.08em;">品鉴笔记 (' + notes.length + ')</h3>';
+    
+    if (notes.length === 0) {
+        html += '<p style="color:rgba(212,197,160,0.4);">还没有品鉴笔记，点击添加</p>';
+    } else {
+        for (var j = 0; j < notes.length; j++) {
+            html += '<div style="padding:16px 20px;background:rgba(13,13,13,0.5);border:1px solid rgba(201,168,76,0.06);margin-bottom:10px;">' +
+                        '<div style="font-size:12px;color:rgba(212,197,160,0.4);margin-bottom:6px;">' + new Date(notes[j].date).toLocaleDateString('zh-CN') + '</div>' +
+                        '<div style="color:rgba(212,197,160,0.7);line-height:1.6;">' + notes[j].note + '</div>' +
+                        '<button style="margin-top:8px;background:transparent;border:1px solid rgba(231,76,60,0.3);color:rgba(231,76,60,0.7);padding:4px 10px;cursor:pointer;font-size:11px;" onclick="deleteNote(' + w.id + ',' + j + ')">删除</button>' +
+                    '</div>';
+        }
+    }
+    
+    html += '</div></div></div>';
+    document.getElementById('detailView').innerHTML = html;
+}
+
+function goBack() {
+    if (currentView === 'favorites') switchView('favorites');
+    else switchView('list');
+}
+
+/* ====== 品鉴笔记 ====== */
+function addNote(id) {
+    var note = prompt('请输入品鉴笔记：');
+    if (!note) return;
+    var notes = JSON.parse(localStorage.getItem('notes_' + id) || '[]');
+    notes.push({ date: new Date().toISOString(), note: note });
+    localStorage.setItem('notes_' + id, JSON.stringify(notes));
+    showDetail(id);
+}
+
+function deleteNote(id, idx) {
+    if (!confirm('确定删除这条笔记？')) return;
+    var notes = JSON.parse(localStorage.getItem('notes_' + id) || '[]');
+    notes.splice(idx, 1);
+    localStorage.setItem('notes_' + id, JSON.stringify(notes));
+    showDetail(id);
+}
+
+/* ====== 搜索和筛选 ====== */
+function searchWhisky() {
+    currentSearch = document.querySelector('.search-input').value.trim();
+    if (currentView === 'list') renderList();
+    if (currentView === 'map') updateMapMarkers();
+}
+
+function filterByRegion(e, r) {
+    currentRegion = r;
+    var btns = document.querySelectorAll('.filter-group')[0].querySelectorAll('.filter-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+    e.target.classList.add('active');
+    if (currentView === 'list') renderList();
+    if (currentView === 'map') updateMapMarkers();
+}
+
+function filterByPrice(e, p) {
+    currentPrice = p;
+    var btns = document.querySelectorAll('.filter-group')[1].querySelectorAll('.filter-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+    e.target.classList.add('active');
+    if (currentView === 'list') renderList();
+    if (currentView === 'map') updateMapMarkers();
+}
+
+function filterByPeat(e, p) {
+    currentPeat = p;
+    var btns = document.querySelectorAll('.filter-group')[2].querySelectorAll('.filter-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+    e.target.classList.add('active');
+    if (currentView === 'list') renderList();
+    if (currentView === 'map') updateMapMarkers();
+}
+
+
+/* ====== 地图标记数组（用于清除）====== */
+var mapMarkers = [];
+
+/* ====== 更新地图标记（根据筛选条件）====== */
+function updateMapMarkers() {
+    if (!mapInstance) return;
+    // 清除所有现有标记
+    mapMarkers.forEach(function(m) { mapInstance.removeLayer(m); });
+    mapMarkers = [];
+    // 获取筛选后的威士忌
+    var filtered = getFilteredWhiskies ? getFilteredWhiskies() : whiskyDatabase;
+    // 按产区分组
+    var grouped = {};
+    for (var i = 0; i < filtered.length; i++) {
+        var r = filtered[i].region;
+        if (!grouped[r]) grouped[r] = [];
+        grouped[r].push(filtered[i]);
+    }
+    // 重新添加标记（只添加有匹配酒款的产区）
+    var regions = {
+        '艾雷岛': { lat:55.75, lon:-6.2, color:'#8b4513' },
+        '斯佩塞': { lat:57.48, lon:-3.12, color:'#c41e3a' },
+        '高地': { lat:56.8, lon:-4.5, color:'#4169e1' },
+        '低地': { lat:55.8, lon:-3.8, color:'#228b22' },
+        '坎贝尔镇': { lat:55.43, lon:-5.6, color:'#ff8c00' },
+        '岛屿': { lat:57.3, lon:-6.2, color:'#9400d3' },
+        '日本': { lat:35.0, lon:137.0, color:'#ff69b4' }
+    };
+    Object.keys(regions).forEach(function(r) {
+        var info = regions[r];
+        var whiskies = grouped[r] || [];
+        if (whiskies.length === 0) return; // 没有匹配酒款，不添加标记
+        var marker = L.marker([info.lat, info.lon]);
+        var html = '<div style="font-family:Georgia;background:#1a1a2e;color:#d4c5a0;padding:12px;min-width:200px;"><h3 style="color:' + info.color + ';margin-bottom:8px;">' + r + ' (' + whiskies.length + '款)</h3>';
+        var showCount = Math.min(whiskies.length, 8);
+        for (var i = 0; i < showCount; i++) {
+            html += '<div style="padding:4px 0;cursor:pointer;" onclick="showDetailFromMap(' + whiskies[i].id + ')">' + whiskies[i].name + ' <span style="color:#c9a84c;">¥' + whiskies[i].price + '</span></div>';
+        }
+        if (whiskies.length > 8) html += '<div style="padding:4px 0;opacity:0.5;">...还有 ' + (whiskies.length - 8) + ' 款</div>';
+        html += '</div>';
+        marker.bindPopup(html);
+        marker.addTo(mapInstance);
+        mapMarkers.push(marker);
+    });
+}
+
+/* ====== 地图初始化 ====== */
+function initMap() {
+    if (mapInstance) return;
+    mapInstance = L.map('map').setView([57.0, -4.0], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(mapInstance);
+    
+    var regions = {
+        '艾雷岛': { lat:55.75, lon:-6.2, color:'#8b4513' },
+        '斯佩塞': { lat:57.48, lon:-3.12, color:'#c41e3a' },
+        '高地': { lat:56.8, lon:-4.5, color:'#4169e1' },
+        '低地': { lat:55.8, lon:-3.8, color:'#228b22' },
+        '坎贝尔镇': { lat:55.43, lon:-5.6, color:'#ff8c00' },
+        '岛屿': { lat:57.3, lon:-6.2, color:'#9400d3' },
+        '日本': { lat:35.0, lon:137.0, color:'#ff69b4' }
+    };
+    
+    updateMapMarkers();
+}
+
+function showDetailFromMap(id) {
+    switchView('list');
+    setTimeout(function() { showDetail(id); }, 100);
+}
+
+/* ====== 初始化 ====== */
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[老黄的酒馆] 初始化...');
+    console.log('[老黄的酒馆] whiskyDatabase 加载了', whiskyDatabase.length, '款');
+    renderList();
+    setTimeout(initMap, 500);
+});
+
+/* ====== 挂载到 window（确保 onclick 能调用）====== */
+window.switchView = switchView;
+window.renderList = renderList;
+window.toggleFavorite = toggleFavorite;
+window.showDetail = showDetail;
+window.addNote = addNote;
+window.deleteNote = deleteNote;
+window.searchWhisky = searchWhisky;
+window.filterByRegion = filterByRegion;
+window.filterByPrice = filterByPrice;
+window.filterByPeat = filterByPeat;
+window.initMap = initMap;
+window.goBack = goBack;
+window.showDetailFromMap = showDetailFromMap;
+window.getFilteredWhiskies = getFilteredWhiskies;
+window.updateMapMarkers = updateMapMarkers;
+window.getFavorites = getFavorites;
+window.renderFavorites = renderFavorites;
+
+console.log('[老黄的酒馆] 所有函数已挂载到 window');
+</script>
+
+</body>
+</html>
+
+
+
