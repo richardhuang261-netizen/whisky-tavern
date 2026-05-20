@@ -59,6 +59,61 @@ body { font-family:'ZCOOL XiaoWei','Georgia','Noto Serif SC','Source Han Serif S
 .fav-btn:hover,.fav-btn.active { background:rgba(231,76,60,0.12); border-color:rgba(231,76,60,0.6); color:#e74c3c; }
 .note-btn { border-color:rgba(52,152,219,0.3); color:rgba(52,152,219,0.7); }
 .note-btn:hover { background:rgba(52,152,219,0.08); }
+
+/* ===== 手机适配 (max-width: 768px) ===== */
+@media (max-width:768px) {
+    /* 全局字体调整 */
+    body { font-size:14px; line-height:1.6; }
+    
+    /* 头部 */
+    .header { padding:12px 16px; flex-direction:column; gap:10px; }
+    .header h1 { font-size:22px; }
+    .nav-tabs { width:100%; justify-content:center; }
+    .nav-tab { padding:8px 14px; font-size:12px; }
+    
+    /* 搜索栏 */
+    .search-bar { padding:16px; }
+    .search-input { padding:12px 16px; font-size:14px; }
+    .filters { gap:10px; }
+    .filter-btn { padding:6px 12px; font-size:11px; }
+    
+    /* 内容区 */
+    .content { padding:16px; }
+    
+    /* 卡片网格：手机上单列 */
+    .whisky-grid { 
+        grid-template-columns:1fr !important; 
+        gap:16px; 
+    }
+    
+    /* 卡片 */
+    .whisky-card-header { padding:16px; }
+    .whisky-card-name { font-size:18px; }
+    .whisky-card-name-en { font-size:14px; }
+    
+    /* 详情页 */
+    .detail-container { padding:16px !important; }
+    .detail-title { font-size:24px !important; }
+    .detail-info-grid { grid-template-columns:1fr !important; }
+    
+    /* 地图 */
+    #map { height:50vh !important; }
+    
+    /* 模态框 */
+    .modal-content { 
+        width:95% !important; 
+        max-height:85vh !important; 
+        margin:20px auto !important; 
+    }
+}
+
+/* ===== 小屏手机 (max-width: 480px) ===== */
+@media (max-width:480px) {
+    .header h1 { font-size:20px; }
+    .nav-tab { padding:6px 10px; font-size:11px; }
+    .whisky-card-name { font-size:16px; }
+    .detail-title { font-size:20px !important; }
+}
 </style>
 </head>
 <body>
