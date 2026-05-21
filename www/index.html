@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -114,6 +114,32 @@ body { font-family:'ZCOOL XiaoWei','Georgia','Noto Serif SC','Source Han Serif S
     .whisky-card-name { font-size:16px; }
     .detail-title { font-size:20px !important; }
 }
+
+
+/* ===== 雪茄版块 ===== */
+.cigar-filters { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.cigar-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px; }
+.cigar-card { background:rgba(26,26,26,0.95); border:1px solid rgba(201,168,76,0.08); border-radius:0; overflow:hidden; transition:all 0.5s; cursor:pointer; position:relative; }
+.cigar-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#c9a84c,transparent); opacity:0; transition:opacity 0.5s; }
+.cigar-card:hover { transform:translateY(-4px); border-color:rgba(201,168,76,0.25); }
+.cigar-card:hover::before { opacity:1; }
+.cigar-card-header { padding:18px 20px 14px; background:linear-gradient(135deg,rgba(40,26,20,0.9),rgba(50,30,20,0.9)); color:white; }
+.cigar-card-name { font-size:18px; font-weight:400; margin-bottom:4px; letter-spacing:0.06em; }
+.cigar-card-brand { font-family:'Caveat',cursive; font-size:14px; opacity:0.65; }
+.cigar-card-body { padding:16px 20px 18px; }
+.cigar-card-specs { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.cigar-card-desc { font-size:13px; color:rgba(212,197,160,0.55); line-height:1.6; margin-bottom:14px; }
+.cigar-card-strength { display:flex; align-items:center; gap:8px; }
+.strength-label { font-size:11px; color:rgba(212,197,160,0.4); }
+.strength-bar { display:flex; gap:3px; }
+.strength-dot { width:10px; height:10px; border-radius:50%; background:rgba(201,168,76,0.2); }
+.strength-dot.active { background:#c9a84c; }
+
+@media (max-width:768px) {
+    .cigar-grid { grid-template-columns:1fr !important; }
+    .cigar-filters { gap:6px; }
+}
+
 </style>
 </head>
 <body>
@@ -179,6 +205,7 @@ const whiskyDatabase = [{"id":1,"name":"阿贝10年","nameEn":"Ardbeg 10","regio
 
 /* ====== 状态 ====== */
 var currentView = 'map';
+var currentCigarStrength = '全部';
 var currentRegion = '全部';
 var currentPrice = '全部';
 var currentPeat = '全部';
