@@ -1,0 +1,22 @@
+﻿{
+    "description":  "威士忌数据库 - 153款精选威士忌",
+    "short_name":  "酒馆",
+    "icons":  [
+                  {
+                      "type":  "image/png",
+                      "sizes":  "192x192",
+                      "src":  "icon-192.png"
+                  },
+                  {
+                      "type":  "image/png",
+                      "sizes":  "512x512",
+                      "src":  "icon-512.png"
+                  }
+              ],
+    "theme_color":  "#d4a574",
+    "display":  "standalone",
+    "name":  "老黄的酒馆",
+    "background_color":  "#0d0d0d",
+    "start_url":  "/whisky-tavern/",
+    "orientation":  "portrait"
+}
